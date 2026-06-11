@@ -1,0 +1,15 @@
+{
+  "name": "chibi-clash",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cute retro 2D pixel-art fighting game — pure Canvas, zero external assets",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
