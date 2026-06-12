@@ -24,6 +24,14 @@ export class Menu {
     this.stars = Array.from({ length: 40 }, (_, i) => ({
       x: (i * 137) % VIEW_W, y: (i * 83) % VIEW_H, s: 0.2 + (i % 3) * 0.25,
     }));
+    // online state (managed by main.js)
+    this.online = false;        // results screen belongs to an online match
+    this.netLines = [];         // status text on the netwait screen
+    this.netCode = '';          // room code to display big
+    this.netDone = false;       // netwait is showing a final error/notice
+    this.netChar = null;        // { cursor, locked, remoteLocked, remoteChar, isHost }
+    this.joinBuf = '';          // room-code entry buffer
+    this.resultsNote = '';      // e.g. "WAITING FOR RIVAL..."
   }
 
   go(screen) {
@@ -34,6 +42,7 @@ export class Menu {
 
   showResults(result) {
     this.result = result;
+    this.resultsNote = '';
     this.go('results');
     this.audio.music('menu');
   }
@@ -56,7 +65,7 @@ export class Menu {
         break;
       }
       case 'mode': {
-        const items = 3;
+        const items = 4;
         if (k.up()) { this.sel = (this.sel + items - 1) % items; beep(); }
         if (k.down()) { this.sel = (this.sel + 1) % items; beep(); }
         if (k.back()) { this.go('title'); beep(); }
@@ -64,7 +73,62 @@ export class Menu {
           pick();
           if (this.sel === 0) { this.config.mode = 'cpu'; this.go('difficulty'); }
           else if (this.sel === 1) { this.config.mode = '2p'; this.startCharSelect(); }
+          else if (this.sel === 2) this.go('online');
           else this.go('controls');
+        }
+        break;
+      }
+      case 'online': {
+        if (k.up()) { this.sel = (this.sel + 2) % 3; beep(); }
+        if (k.down()) { this.sel = (this.sel + 1) % 3; beep(); }
+        if (k.back()) { this.go('mode'); beep(); }
+        if (k.confirm()) {
+          pick();
+          if (this.sel === 0) return { type: 'quickmatch' };
+          if (this.sel === 1) return { type: 'createroom' };
+          this.joinBuf = '';
+          this.go('joinCode');
+        }
+        break;
+      }
+      case 'joinCode': {
+        for (let i = 0; i < 26; i++) {
+          const ch = String.fromCharCode(65 + i);
+          if (wasPressed('Key' + ch) && this.joinBuf.length < 4) {
+            this.joinBuf += ch; beep();
+          }
+        }
+        if (wasPressed('Backspace') && this.joinBuf.length) {
+          this.joinBuf = this.joinBuf.slice(0, -1); beep();
+        }
+        if (wasPressed('Escape')) { this.go('online'); beep(); }
+        if (wasPressed('Enter') && this.joinBuf.length === 4) {
+          pick();
+          return { type: 'joinroom', code: this.joinBuf };
+        }
+        break;
+      }
+      case 'netwait': {
+        if (wasPressed('Escape') ||
+            (this.netDone && (wasPressed('Enter') || wasPressed('KeyJ')))) {
+          beep();
+          return { type: 'cancelnet' };
+        }
+        break;
+      }
+      case 'netchar': {
+        const nc = this.netChar;
+        if (!nc) break;
+        if (wasPressed('Escape')) return { type: 'cancelnet' };
+        if (!nc.locked) {
+          if (wasPressed('KeyA') || wasPressed('ArrowLeft') ||
+              wasPressed('KeyD') || wasPressed('ArrowRight')) {
+            nc.cursor = 1 - nc.cursor; beep();
+          }
+          if (wasPressed('KeyJ') || wasPressed('Enter')) {
+            nc.locked = true; pick();
+            return { type: 'netpick', c: nc.cursor };
+          }
         }
         break;
       }
@@ -116,6 +180,7 @@ export class Menu {
         if (k.confirm()) {
           pick();
           if (this.sel === 0) return { type: 'rematch' };
+          if (this.online) return { type: 'leavenet' };
           this.go('title');
           this.audio.music('menu');
         }
@@ -204,9 +269,94 @@ export class Menu {
         break;
       }
       case 'mode': {
-        drawTextShadow(ctx, 'SELECT MODE', VIEW_W / 2, 42, '#3ee7ff', 3, 'center');
-        this.drawMenuList(ctx, ['SINGLE PLAYER (VS CPU)', 'LOCAL 2-PLAYER (VS HUMAN)', 'CONTROLS'], 110, 24);
+        drawTextShadow(ctx, 'SELECT MODE', VIEW_W / 2, 38, '#3ee7ff', 3, 'center');
+        this.drawMenuList(ctx,
+          ['SINGLE PLAYER (VS CPU)', 'LOCAL 2-PLAYER (VS HUMAN)', 'ONLINE MATCH (WI-FI)', 'CONTROLS'], 96, 24);
         drawText(ctx, 'W/S: MOVE   ENTER: OK   ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        break;
+      }
+      case 'online': {
+        drawTextShadow(ctx, 'ONLINE MATCH', VIEW_W / 2, 42, '#3ee7ff', 3, 'center');
+        this.drawMenuList(ctx,
+          ['QUICK MATCH (RANDOM RIVAL)', 'CREATE ROOM (HOST A FRIEND)', 'JOIN ROOM (ENTER CODE)'], 104, 26);
+        const blurbs = [
+          'FIND A RANDOM OPPONENT ONLINE!',
+          'GET A 4-LETTER CODE TO SHARE.',
+          "TYPE YOUR FRIEND'S ROOM CODE.",
+        ];
+        drawText(ctx, blurbs[this.sel], VIEW_W / 2, 196, '#ffe14f', 1, 'center');
+        drawText(ctx, 'PEER-TO-PEER. BOTH PLAYERS NEED INTERNET.', VIEW_W / 2, 214, '#7a6aa8', 1, 'center');
+        drawText(ctx, 'W/S: MOVE   ENTER: OK   ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        break;
+      }
+      case 'joinCode': {
+        drawTextShadow(ctx, 'JOIN ROOM', VIEW_W / 2, 48, '#3ee7ff', 3, 'center');
+        drawText(ctx, 'ENTER THE 4-LETTER ROOM CODE', VIEW_W / 2, 84, '#fff', 1, 'center');
+        for (let i = 0; i < 4; i++) {
+          const x = VIEW_W / 2 - 66 + i * 36;
+          const active = i === this.joinBuf.length;
+          ctx.fillStyle = active && (this.t >> 4) % 2 === 0 ? '#ffe14f' : '#352a60';
+          ctx.fillRect(x, 104, 30, 38);
+          ctx.fillStyle = '#1d1442';
+          ctx.fillRect(x + 2, 106, 26, 34);
+          if (this.joinBuf[i]) {
+            drawText(ctx, this.joinBuf[i], x + 15, 113, '#fff', 4, 'center');
+          }
+        }
+        drawText(ctx, 'TYPE A-Z   BACKSPACE: DELETE', VIEW_W / 2, 168, '#ffe14f', 1, 'center');
+        drawText(ctx, this.joinBuf.length === 4 ? 'ENTER: CONNECT!' : ' ',
+          VIEW_W / 2, 184, (this.t >> 4) % 2 === 0 ? '#3ee7ff' : '#fff', 2, 'center');
+        drawText(ctx, 'ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        break;
+      }
+      case 'netwait': {
+        drawTextShadow(ctx, 'ONLINE MATCH', VIEW_W / 2, 40, '#3ee7ff', 3, 'center');
+        if (this.netCode) {
+          drawText(ctx, 'ROOM CODE', VIEW_W / 2, 78, '#9a8cc8', 1, 'center');
+          const flash = (this.t >> 4) % 2 === 0 ? '#ffe14f' : '#fff';
+          drawTextShadow(ctx, this.netCode.split('').join(' '), VIEW_W / 2, 92, flash, 5, 'center');
+          drawText(ctx, 'SHARE THIS CODE WITH YOUR FRIEND!', VIEW_W / 2, 134, '#fff', 1, 'center');
+        }
+        this.netLines.forEach((ln, i) => {
+          drawTextShadow(ctx, ln, VIEW_W / 2, (this.netCode ? 156 : 110) + i * 16,
+            this.netDone ? '#ff5b7d' : '#ffe14f', this.netDone ? 2 : 1, 'center');
+        });
+        if (!this.netDone) {
+          const dots = '.'.repeat(1 + ((this.t / 24) | 0) % 3);
+          drawText(ctx, dots, VIEW_W / 2, (this.netCode ? 176 : 132), '#3ee7ff', 3, 'center');
+        }
+        drawText(ctx, this.netDone ? 'ENTER / ESC: BACK' : 'ESC: CANCEL',
+          VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        break;
+      }
+      case 'netchar': {
+        const nc = this.netChar || { cursor: 0 };
+        drawTextShadow(ctx, 'CHOOSE YOUR FIGHTER', VIEW_W / 2, 32, '#3ee7ff', 3, 'center');
+        drawTextShadow(ctx, `YOU ARE ${nc.isHost ? 'P1 (LEFT)' : 'P2 (RIGHT)'}`,
+          VIEW_W / 2, 58, '#ffe14f', 1, 'center');
+        for (let i = 0; i < 2; i++) {
+          const cx = VIEW_W / 2 + (i === 0 ? -92 : 92);
+          const selected = nc.cursor === i;
+          const blink = selected && !nc.locked && (this.t >> 3) % 2 === 0;
+          ctx.fillStyle = nc.locked && selected ? '#3ee76a'
+            : blink ? '#ffe14f' : selected ? '#ff4fa0' : '#352a60';
+          ctx.fillRect(cx - 47, 66, 94, 132);
+          ctx.fillStyle = '#1d1442';
+          ctx.fillRect(cx - 44, 69, 88, 126);
+          const pose = selected ? ['victory0', 'victory1'][(this.t >> 4) % 2]
+            : ['idle0', 'idle1', 'idle2', 'idle3'][(this.t >> 4) % 4];
+          ctx.drawImage(this.preview[i].poses[pose], 12, 0, 40, 56, cx - 40, 76, 80, 112);
+          drawTextShadow(ctx, ROSTER[i].pal.name, cx, 204, selected ? '#fff' : '#9a8cc8', 1, 'center');
+          if (selected) drawText(ctx, 'YOU', cx - 42, 73, '#3ee7ff', 1);
+          if (nc.remoteLocked && nc.remoteChar === i) {
+            drawText(ctx, 'RIVAL', cx + 18, 73, '#ff5b7d', 1);
+          }
+        }
+        const status = nc.locked
+          ? (nc.remoteLocked ? 'BOTH READY! STARTING...' : 'WAITING FOR RIVAL...')
+          : 'A/D: MOVE   J OR ENTER: LOCK IN';
+        drawText(ctx, status, VIEW_W / 2, 218, nc.locked ? '#ffe14f' : '#fff', 1, 'center');
+        drawText(ctx, 'ESC: LEAVE MATCH', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
         break;
       }
       case 'difficulty': {
@@ -302,12 +452,16 @@ export class Menu {
           drawText(ctx, String(row[1]), 250, y, i === 0 ? '#3ee7ff' : '#fff', 1);
           drawText(ctx, String(row[2]), 360, y, i === 0 ? '#ff4fa0' : '#fff', 1);
         });
-        const items = ['REMATCH', 'BACK TO TITLE'];
+        const items = ['REMATCH', this.online ? 'LEAVE MATCH' : 'BACK TO TITLE'];
         items.forEach((it, i) => {
           const on = i === this.sel;
           if (on) drawText(ctx, '>', VIEW_W / 2 - textWidth(it, 1) / 2 - 10, 206 + i * 14, '#ff4fa0', 1);
           drawText(ctx, it, VIEW_W / 2, 206 + i * 14, on ? '#ffe14f' : '#9a8cc8', 1, 'center');
         });
+        if (this.resultsNote) {
+          drawText(ctx, this.resultsNote, VIEW_W / 2, 238,
+            (this.t >> 4) % 2 === 0 ? '#ffe14f' : '#fff', 1, 'center');
+        }
         break;
       }
       default: break;

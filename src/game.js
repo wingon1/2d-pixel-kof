@@ -24,11 +24,11 @@ function mulberry32(seed) {
 const S1 = {}, S2 = {}, S3 = {}, S4 = {}; // scratch boxes (zero-GC)
 
 export class Game {
-  constructor({ p1, p2, audio, onMatchEnd }) {
-    // p1/p2: { name, pal, controller }
+  constructor({ p1, p2, audio, onMatchEnd, seed }) {
+    // p1/p2: { name, pal, controller }. seed: shared RNG seed (online play).
     this.audio = audio;
     this.onMatchEnd = onMatchEnd;
-    this.rng = mulberry32((Date.now() & 0xffffff) ^ 0x9e37);
+    this.rng = mulberry32(((seed ?? Date.now()) & 0xffffff) ^ 0x9e37);
 
     const f1 = new Character({ name: p1.name, sprites: bakeFighter(p1.pal), controller: p1.controller });
     const f2 = new Character({ name: p2.name, sprites: bakeFighter(p2.pal), controller: p2.controller });

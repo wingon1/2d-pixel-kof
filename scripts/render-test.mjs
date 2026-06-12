@@ -63,6 +63,14 @@ menu.go('mode'); menu.t = 20; menu.draw(ctx); save('02-mode');
 menu.go('difficulty'); menu.t = 20; menu.sel = 2; menu.draw(ctx); save('03-difficulty');
 menu.startCharSelect(); menu.t = 20; menu.draw(ctx); save('04-charselect');
 menu.go('controls'); menu.draw(ctx); save('05-controls');
+// online screens
+menu.go('online'); menu.t = 20; menu.draw(ctx); save('10-online');
+menu.go('joinCode'); menu.joinBuf = 'KAT'; menu.t = 20; menu.draw(ctx); save('11-joincode');
+menu.go('netwait'); menu.netCode = 'MRWZ'; menu.netDone = false;
+menu.netLines = ['WAITING FOR YOUR FRIEND']; menu.t = 20; menu.draw(ctx); save('12-room');
+menu.go('netchar');
+menu.netChar = { cursor: 0, locked: true, remoteLocked: true, remoteChar: 1, isHost: true };
+menu.t = 20; menu.draw(ctx); save('13-netchar');
 
 // 2) gameplay frames
 const game = new Game({

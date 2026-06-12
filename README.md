@@ -16,6 +16,12 @@ Open the printed URL (default http://localhost:5173).
 
 - **Single Player (vs CPU)** — pick AI difficulty Lv.1 Chibi / Lv.2 Fighter / Lv.3 Boss
 - **Local 2-Player** — shared keyboard
+- **Online Match** — real-time P2P over WebRTC (both players need internet):
+  - *Quick Match*: random opponent via serverless lobby slots
+  - *Create / Join Room*: share a 4-letter room code with a friend
+  - Delay-based lockstep netcode (4-frame input delay) keeps both simulations
+    bit-identical; ping shown in-game. In online play both players use the
+    P1 keys (A/D/W/S + J/K/L) on their own machine.
 
 ## Controls
 
@@ -41,6 +47,8 @@ ESC pauses, M mutes. Best of 3 rounds, 99-second timer, match stats at the end.
 src/
   main.js        fixed-timestep 60fps core loop, app states
   input.js       multi-key edge-latched keyboard state
+  lockstep.js    deterministic lockstep netcode (transport-agnostic)
+  net.js         WebRTC P2P matchmaking + rooms (PeerJS signaling)
   ai.js          3-tier reaction-delayed decision-tree CPU
   character.js   fighter state machine, frame data, physics
   collision.js   AABB pushbox/hurtbox/hitbox intersection
