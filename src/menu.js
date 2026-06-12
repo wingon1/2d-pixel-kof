@@ -1,7 +1,7 @@
 // ── Menus: title, mode select, difficulty, character select, results ─────
 import { VIEW_W, VIEW_H } from './constants.js';
 import { drawText, drawTextShadow, textWidth } from './font.js';
-import { menuKey, wasPressed } from './input.js';
+import { menuKey, wasPressed, wasTyped } from './input.js';
 import { ROSTER, bakeFighter } from './sprites.js';
 import { AI_LEVELS } from './ai.js';
 
@@ -30,8 +30,10 @@ export class Menu {
     this.netCode = '';          // room code to display big
     this.netDone = false;       // netwait is showing a final error/notice
     this.netChar = null;        // { cursor, locked, remoteLocked, remoteChar, isHost }
-    this.joinBuf = '';          // room-code entry buffer
+    this.joinSlots = ['', '', '', ''];  // room-code entry
+    this.joinCursor = 0;
     this.resultsNote = '';      // e.g. "WAITING FOR RIVAL..."
+    this.touchMode = false;     // on-screen controls active (mobile)
   }
 
   go(screen) {
@@ -70,6 +72,11 @@ export class Menu {
         if (k.down()) { this.sel = (this.sel + 1) % items; beep(); }
         if (k.back()) { this.go('title'); beep(); }
         if (k.confirm()) {
+          if (this.sel === 1 && this.touchMode) {
+            // local 2P needs a shared keyboard — not available on touch
+            this.audio.sfx('block');
+            break;
+          }
           pick();
           if (this.sel === 0) { this.config.mode = 'cpu'; this.go('difficulty'); }
           else if (this.sel === 1) { this.config.mode = '2p'; this.startCharSelect(); }
@@ -86,25 +93,43 @@ export class Menu {
           pick();
           if (this.sel === 0) return { type: 'quickmatch' };
           if (this.sel === 1) return { type: 'createroom' };
-          this.joinBuf = '';
+          this.joinSlots = ['', '', '', ''];
+          this.joinCursor = 0;
           this.go('joinCode');
         }
         break;
       }
       case 'joinCode': {
+        const slots = this.joinSlots;
+        const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        // physical typing (touch-stick WASD is excluded via wasTyped)
         for (let i = 0; i < 26; i++) {
-          const ch = String.fromCharCode(65 + i);
-          if (wasPressed('Key' + ch) && this.joinBuf.length < 4) {
-            this.joinBuf += ch; beep();
+          if (wasTyped('Key' + ABC[i])) {
+            slots[this.joinCursor] = ABC[i];
+            this.joinCursor = Math.min(3, this.joinCursor + 1);
+            beep();
           }
         }
-        if (wasPressed('Backspace') && this.joinBuf.length) {
-          this.joinBuf = this.joinBuf.slice(0, -1); beep();
+        // stick / arrow entry
+        if (wasPressed('ArrowLeft')) { this.joinCursor = Math.max(0, this.joinCursor - 1); beep(); }
+        if (wasPressed('ArrowRight')) { this.joinCursor = Math.min(3, this.joinCursor + 1); beep(); }
+        const cyc = wasPressed('ArrowUp') ? 1 : wasPressed('ArrowDown') ? -1 : 0;
+        if (cyc) {
+          const idx = ABC.indexOf(slots[this.joinCursor]);
+          slots[this.joinCursor] = idx < 0
+            ? (cyc > 0 ? 'A' : 'Z')
+            : ABC[(idx + cyc + 26) % 26];
+          beep();
+        }
+        if (wasPressed('Backspace')) {
+          if (slots[this.joinCursor]) slots[this.joinCursor] = '';
+          else if (this.joinCursor > 0) { this.joinCursor--; slots[this.joinCursor] = ''; }
+          beep();
         }
         if (wasPressed('Escape')) { this.go('online'); beep(); }
-        if (wasPressed('Enter') && this.joinBuf.length === 4) {
+        if (wasPressed('Enter') && slots.every(s => s)) {
           pick();
-          return { type: 'joinroom', code: this.joinBuf };
+          return { type: 'joinroom', code: slots.join('') };
         }
         break;
       }
@@ -262,7 +287,8 @@ export class Menu {
         this.drawFighterPreview(ctx, this.preview[0], 70, false);
         this.drawFighterPreview(ctx, this.preview[1], VIEW_W - 70, true);
         if ((this.t >> 5) % 2 === 0) {
-          drawTextShadow(ctx, 'PRESS ENTER', VIEW_W / 2, 196, '#fff', 2, 'center');
+          drawTextShadow(ctx, this.touchMode ? 'TAP START' : 'PRESS ENTER',
+            VIEW_W / 2, 196, '#fff', 2, 'center');
         }
         drawText(ctx, 'INSERT COIN', VIEW_W / 2, 218, '#7a6aa8', 1, 'center');
         drawText(ctx, '60FPS - ZERO ASSETS - 100% PROCEDURAL', VIEW_W / 2, VIEW_H - 10, '#4a3a78', 1, 'center');
@@ -270,9 +296,20 @@ export class Menu {
       }
       case 'mode': {
         drawTextShadow(ctx, 'SELECT MODE', VIEW_W / 2, 38, '#3ee7ff', 3, 'center');
-        this.drawMenuList(ctx,
-          ['SINGLE PLAYER (VS CPU)', 'LOCAL 2-PLAYER (VS HUMAN)', 'ONLINE MATCH (WI-FI)', 'CONTROLS'], 96, 24);
-        drawText(ctx, 'W/S: MOVE   ENTER: OK   ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        const localLabel = this.touchMode ? 'LOCAL 2-PLAYER (PC ONLY)' : 'LOCAL 2-PLAYER (VS HUMAN)';
+        const items = ['SINGLE PLAYER (VS CPU)', localLabel, 'ONLINE MATCH (WI-FI)', 'CONTROLS'];
+        items.forEach((it, i) => {
+          const on = i === this.sel;
+          const disabled = i === 1 && this.touchMode;
+          const color = disabled ? '#4a3a78' : on ? '#ffe14f' : '#9a8cc8';
+          if (on) drawText(ctx, '>', VIEW_W / 2 - textWidth(it, 2) / 2 - 14, 96 + i * 24, '#ff4fa0', 2);
+          drawTextShadow(ctx, it, VIEW_W / 2, 96 + i * 24, color, 2, 'center');
+        });
+        if (this.sel === 1 && this.touchMode) {
+          drawText(ctx, 'NEEDS A SHARED KEYBOARD - PLAY ONLINE INSTEAD!', VIEW_W / 2, 200, '#ff5b7d', 1, 'center');
+        }
+        drawText(ctx, this.touchMode ? 'STICK: MOVE   START/LP: OK   BACK: BACK'
+          : 'W/S: MOVE   ENTER: OK   ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
         break;
       }
       case 'online': {
@@ -290,23 +327,33 @@ export class Menu {
         break;
       }
       case 'joinCode': {
-        drawTextShadow(ctx, 'JOIN ROOM', VIEW_W / 2, 48, '#3ee7ff', 3, 'center');
-        drawText(ctx, 'ENTER THE 4-LETTER ROOM CODE', VIEW_W / 2, 84, '#fff', 1, 'center');
+        drawTextShadow(ctx, 'JOIN ROOM', VIEW_W / 2, 44, '#3ee7ff', 3, 'center');
+        drawText(ctx, 'ENTER THE 4-LETTER ROOM CODE', VIEW_W / 2, 78, '#fff', 1, 'center');
+        const full = this.joinSlots.every(s => s);
         for (let i = 0; i < 4; i++) {
           const x = VIEW_W / 2 - 66 + i * 36;
-          const active = i === this.joinBuf.length;
-          ctx.fillStyle = active && (this.t >> 4) % 2 === 0 ? '#ffe14f' : '#352a60';
-          ctx.fillRect(x, 104, 30, 38);
+          const active = i === this.joinCursor;
+          ctx.fillStyle = active && (this.t >> 4) % 2 === 0 ? '#ffe14f'
+            : active ? '#ff4fa0' : '#352a60';
+          ctx.fillRect(x, 102, 30, 38);
           ctx.fillStyle = '#1d1442';
-          ctx.fillRect(x + 2, 106, 26, 34);
-          if (this.joinBuf[i]) {
-            drawText(ctx, this.joinBuf[i], x + 15, 113, '#fff', 4, 'center');
+          ctx.fillRect(x + 2, 104, 26, 34);
+          if (this.joinSlots[i]) {
+            drawText(ctx, this.joinSlots[i], x + 15, 111, '#fff', 4, 'center');
+          }
+          if (active) { // cycle hints above/below the cursor slot
+            drawText(ctx, '+', x + 15, 92, '#3ee7ff', 1, 'center');
+            drawText(ctx, '-', x + 15, 146, '#3ee7ff', 1, 'center');
           }
         }
-        drawText(ctx, 'TYPE A-Z   BACKSPACE: DELETE', VIEW_W / 2, 168, '#ffe14f', 1, 'center');
-        drawText(ctx, this.joinBuf.length === 4 ? 'ENTER: CONNECT!' : ' ',
-          VIEW_W / 2, 184, (this.t >> 4) % 2 === 0 ? '#3ee7ff' : '#fff', 2, 'center');
-        drawText(ctx, 'ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
+        const hint = this.touchMode
+          ? 'STICK UP/DOWN: LETTER   LEFT/RIGHT: SLOT'
+          : 'TYPE A-Z OR ARROWS   BACKSPACE: DELETE';
+        drawText(ctx, hint, VIEW_W / 2, 166, '#ffe14f', 1, 'center');
+        drawText(ctx, full ? (this.touchMode ? 'START: CONNECT!' : 'ENTER: CONNECT!') : ' ',
+          VIEW_W / 2, 182, (this.t >> 4) % 2 === 0 ? '#3ee7ff' : '#fff', 2, 'center');
+        drawText(ctx, this.touchMode ? 'BACK: CANCEL' : 'ESC: BACK',
+          VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
         break;
       }
       case 'netwait': {

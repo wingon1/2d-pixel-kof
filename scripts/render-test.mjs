@@ -65,7 +65,13 @@ menu.startCharSelect(); menu.t = 20; menu.draw(ctx); save('04-charselect');
 menu.go('controls'); menu.draw(ctx); save('05-controls');
 // online screens
 menu.go('online'); menu.t = 20; menu.draw(ctx); save('10-online');
-menu.go('joinCode'); menu.joinBuf = 'KAT'; menu.t = 20; menu.draw(ctx); save('11-joincode');
+menu.go('joinCode'); menu.joinSlots = ['K', 'A', 'T', '']; menu.joinCursor = 3;
+menu.t = 20; menu.draw(ctx); save('11-joincode');
+// mobile variants
+menu.touchMode = true;
+menu.go('mode'); menu.sel = 1; menu.t = 20; menu.draw(ctx); save('14-mode-mobile');
+menu.go('joinCode'); menu.t = 20; menu.draw(ctx); save('15-joincode-mobile');
+menu.touchMode = false;
 menu.go('netwait'); menu.netCode = 'MRWZ'; menu.netDone = false;
 menu.netLines = ['WAITING FOR YOUR FRIEND']; menu.t = 20; menu.draw(ctx); save('12-room');
 menu.go('netchar');

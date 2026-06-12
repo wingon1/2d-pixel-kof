@@ -10,6 +10,7 @@ import { ROSTER } from './sprites.js';
 import { drawTextShadow, drawText, drawTextOutline } from './font.js';
 import { LockstepSession, NetController, StickyInput } from './lockstep.js';
 import { quickMatch, hostRoom, joinRoom, makeRoomCode } from './net.js';
+import { initTouch } from './touch.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -17,6 +18,8 @@ initInput(window);
 
 const audio = new AudioEngine();
 const menu = new Menu(audio);
+const touchMode = initTouch(audio);   // on-screen controls on touch devices
+menu.touchMode = touchMode;
 
 let appState = 'menu'; // 'menu' | 'game'
 let game = null;
@@ -252,7 +255,10 @@ function tick() {
     // online: lockstep — local pause is impossible, only a quit overlay
     online.sticky.accumulate(onlineLocalCtl.poll());
     if (wasPressed('Escape')) { quitOverlay = !quitOverlay; audio.sfx('select'); }
-    if (quitOverlay && wasPressed('KeyT')) { leaveOnline(); return; }
+    // T (keyboard) or HP button (touch) confirms leaving
+    if (quitOverlay && (wasPressed('KeyT') || (touchMode && wasPressed('KeyK')))) {
+      leaveOnline(); return;
+    }
     const s = online.session;
     if (s.canStep()) {
       s.captureLocal(online.sticky.capture());
@@ -272,7 +278,8 @@ function tick() {
     audio.sfx('select');
   }
   if (paused) {
-    if (wasPressed('KeyT')) { // quit to title
+    // T (keyboard) or HP button (touch) quits to title
+    if (wasPressed('KeyT') || (touchMode && wasPressed('KeyK'))) {
       appState = 'menu';
       game = null;
       paused = false;
@@ -311,13 +318,15 @@ function render() {
       ctx.fillStyle = 'rgba(8,4,26,0.7)';
       ctx.fillRect(-8, 90, VIEW_W + 16, 70);
       drawTextShadow(ctx, 'LEAVE MATCH?', VIEW_W / 2, 108, '#ffe14f', 3, 'center');
-      drawText(ctx, 'T: LEAVE   ESC: KEEP FIGHTING', VIEW_W / 2, 136, '#fff', 1, 'center');
+      drawText(ctx, touchMode ? 'HP: LEAVE   BACK: KEEP FIGHTING'
+        : 'T: LEAVE   ESC: KEEP FIGHTING', VIEW_W / 2, 136, '#fff', 1, 'center');
     }
   } else if (paused) {
     ctx.fillStyle = 'rgba(8,4,26,0.7)';
     ctx.fillRect(-8, -8, VIEW_W + 16, VIEW_H + 16);
     drawTextShadow(ctx, 'PAUSED', VIEW_W / 2, 110, '#ffe14f', 4, 'center');
-    drawText(ctx, 'ESC: RESUME   T: QUIT TO TITLE   M: MUTE', VIEW_W / 2, 156, '#fff', 1, 'center');
+    drawText(ctx, touchMode ? 'BACK: RESUME   HP: QUIT TO TITLE'
+      : 'ESC: RESUME   T: QUIT TO TITLE   M: MUTE', VIEW_W / 2, 156, '#fff', 1, 'center');
   }
 }
 

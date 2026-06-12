@@ -3,8 +3,10 @@
 // so a tap between ticks is never lost.
 
 const held = new Set();
-const latched = new Set();   // keys that went down since last tick consume
+const latched = new Set();          // keys that went down since last tick consume
+const latchedVirtual = new Set();   // subset of latched that came from touch UI
 let pressedThisTick = new Set();
+let pressedVirtualThisTick = new Set();
 
 export function initInput(target = window) {
   target.addEventListener('keydown', (e) => {
@@ -22,12 +24,27 @@ export function initInput(target = window) {
 // Call once per logic tick BEFORE polling controllers.
 export function tickInput() {
   pressedThisTick = latched.size ? new Set(latched) : EMPTY;
+  pressedVirtualThisTick = latchedVirtual.size ? new Set(latchedVirtual) : EMPTY;
   latched.clear();
+  latchedVirtual.clear();
 }
 const EMPTY = new Set();
 
 export const isHeld = (code) => held.has(code);
 export const wasPressed = (code) => pressedThisTick.has(code);
+// physical keyboard only (touch UI excluded) — used for typing room codes
+export const wasTyped = (code) =>
+  pressedThisTick.has(code) && !pressedVirtualThisTick.has(code);
+
+// On-screen touch controls inject key state here.
+export function virtualKey(code, down) {
+  if (down) {
+    if (!held.has(code)) { latched.add(code); latchedVirtual.add(code); }
+    held.add(code);
+  } else {
+    held.delete(code);
+  }
+}
 
 // ── Bindings ─────────────────────────────────────────────────────────────
 export const P1_KEYS = {

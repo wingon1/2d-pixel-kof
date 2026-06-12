@@ -11,14 +11,12 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
-  // integer scale: crisp pixels on any display
+  // integer scale for crisp pixels; fractional fit on small (mobile) screens
   resize() {
-    const scale = Math.max(1, Math.min(
-      Math.floor(window.innerWidth / VIEW_W),
-      Math.floor(window.innerHeight / VIEW_H),
-    ));
-    this.canvas.style.width = `${VIEW_W * scale}px`;
-    this.canvas.style.height = `${VIEW_H * scale}px`;
+    let scale = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
+    if (scale >= 1) scale = Math.floor(scale);
+    this.canvas.style.width = `${Math.floor(VIEW_W * scale)}px`;
+    this.canvas.style.height = `${Math.floor(VIEW_H * scale)}px`;
   }
 
   begin(shakeX = 0, shakeY = 0) {

@@ -22,6 +22,11 @@ Open the printed URL (default http://localhost:5173).
   - Delay-based lockstep netcode (4-frame input delay) keeps both simulations
     bit-identical; ping shown in-game. In online play both players use the
     P1 keys (A/D/W/S + J/K/L) on their own machine.
+- **Mobile (touch)** — on-screen controls appear automatically on touch devices:
+  a floating 8-way stick (down-back blocking works) + LP / HP / SP / ★SUPER
+  buttons, plus START and BACK. Touch supports Single Player and Online Match
+  (local 2-player needs a shared keyboard, so it's PC-only). Room codes are
+  entered with the stick (up/down cycles letters).
 
 ## Controls
 
@@ -46,7 +51,8 @@ ESC pauses, M mutes. Best of 3 rounds, 99-second timer, match stats at the end.
 ```
 src/
   main.js        fixed-timestep 60fps core loop, app states
-  input.js       multi-key edge-latched keyboard state
+  input.js       multi-key edge-latched keyboard state + virtual key injection
+  touch.js       mobile on-screen controls (floating stick + buttons)
   lockstep.js    deterministic lockstep netcode (transport-agnostic)
   net.js         WebRTC P2P matchmaking + rooms (PeerJS signaling)
   ai.js          3-tier reaction-delayed decision-tree CPU
