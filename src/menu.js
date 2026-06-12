@@ -227,28 +227,29 @@ export class Menu {
           : (this.config.mode === '2p' ? 'PLAYER 2' : 'CPU');
         drawTextShadow(ctx, `${who} PICK!`, VIEW_W / 2, 58, '#ffe14f', 1, 'center');
         for (let i = 0; i < 2; i++) {
-          const cx = VIEW_W / 2 + (i === 0 ? -90 : 90);
+          const cx = VIEW_W / 2 + (i === 0 ? -92 : 92);
           const selected = this.cursor[this.pickPhase] === i;
           const blink = selected && (this.t >> 3) % 2 === 0;
           // frame
           ctx.fillStyle = blink ? '#ffe14f' : selected ? '#ff4fa0' : '#352a60';
-          ctx.fillRect(cx - 42, 74, 84, 120);
+          ctx.fillRect(cx - 47, 66, 94, 132);
           ctx.fillStyle = '#1d1442';
-          ctx.fillRect(cx - 39, 77, 78, 114);
+          ctx.fillRect(cx - 44, 69, 88, 126);
           const mirror = this.pickPhase === 1 && this.config.p1 === i;
           const spr = mirror ? this.previewAlt[i] : this.preview[i];
           const pose = selected ? ['victory0', 'victory1'][(this.t >> 4) % 2]
             : ['idle0', 'idle1', 'idle2', 'idle3'][(this.t >> 4) % 4];
-          ctx.drawImage(spr.poses[pose], cx - 32, 122);
-          drawTextShadow(ctx, ROSTER[i].pal.name, cx, 182, selected ? '#fff' : '#9a8cc8', 1, 'center');
+          // 2x crop so the cat face is big and readable
+          ctx.drawImage(spr.poses[pose], 12, 0, 40, 56, cx - 40, 76, 80, 112);
+          drawTextShadow(ctx, ROSTER[i].pal.name, cx, 204, selected ? '#fff' : '#9a8cc8', 1, 'center');
           if (this.pickPhase === 1 && this.config.p1 === i) {
-            drawText(ctx, 'P1', cx - 36, 80, '#3ee7ff', 1);
+            drawText(ctx, 'P1', cx - 42, 73, '#3ee7ff', 1);
           }
         }
         const hint = this.pickPhase === 0 ? 'P1: A/D + J TO PICK'
           : 'P2: ARROWS + NUMPAD1 (OR ,) TO PICK';
-        drawText(ctx, hint, VIEW_W / 2, 212, '#7a6aa8', 1, 'center');
-        drawText(ctx, 'ESC: BACK', VIEW_W / 2, 226, '#7a6aa8', 1, 'center');
+        drawText(ctx, hint, VIEW_W / 2, 218, '#7a6aa8', 1, 'center');
+        drawText(ctx, 'ESC: BACK', VIEW_W / 2, 230, '#7a6aa8', 1, 'center');
         break;
       }
       case 'controls': {

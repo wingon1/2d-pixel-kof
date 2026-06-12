@@ -80,19 +80,16 @@ function head(g, pal, cx, top, face = 'normal') {
       px(g, pal.eye, ex + 1, ey + 1, 1, 1);
       px(g, pal.eye, ex, ey + 2, 1, 1); px(g, pal.eye, ex + 2, ey + 2, 1, 1);
     }
-  } else if (face === 'happy') {
-    for (const ex of [e1x, e2x]) {
-      px(g, pal.eye, ex, ey + 1, 1, 1); px(g, pal.eye, ex + 1, ey, 1, 1); px(g, pal.eye, ex + 2, ey + 1, 1, 1);
-    }
   } else {
+    // normal big sparkly eyes (also used for 'happy' — tiny ^^ eyes read badly)
     px(g, pal.eye, e1x, ey, 2, 3); px(g, pal.eye, e2x, ey, 2, 3);
     px(g, '#fff', e1x, ey, 1, 1); px(g, '#fff', e2x, ey, 1, 1);
     if (face === 'angry' || face === 'shout') {
       px(g, pal.eye, e1x - 1, ey - 1, 3, 1); px(g, pal.eye, e2x, ey - 1, 3, 1);
     }
   }
-  px(g, pal.blush, cx - 3, top + 11, 2, 1);            // blush
-  px(g, pal.blush, cx + 10, top + 11, 2, 1);
+  px(g, pal.blush, cx - 3, top + 11, 2, 1);            // blush (left cheek;
+  // right cheek is whisker territory — keeping it clean)
   // pink nose + whiskers
   px(g, '#ff7da0', cx + 4, top + 10, 2, 1);
   px(g, '#ffffff', cx - 13, top + 9, 3, 1);            // whiskers (left)
@@ -150,7 +147,7 @@ function leg(g, pal, hx, hy, fx, fy, kx, ky) {
 const HANDS = {
   guard: [9, -19], guardB: [6, -17], windup: [-7, -21], punch: [18, -20],
   punchHi: [15, -31], lowPunch: [16, -8], palmIn: [5, -17], palmOut: [17, -18],
-  palmOut2: [16, -15], raise: [4, -47], flail: [-9, -27], down: [6, -7],
+  palmOut2: [16, -15], raise: [-7, -46], flail: [-9, -27], down: [6, -7],
   cross: [9, -21], crossB: [8, -18], chargeUp: [10, -42], chargeUpB: [2, -43],
 };
 
@@ -267,8 +264,9 @@ const POSES = {
   knockdown: (g, p) => lying(g, p, 'hurt'),
   ko: (g, p) => lying(g, p, 'ko'),
   getup: (g, p) => stand(g, p, { legs: 'kneel', armF: 'down', face: 'hurt', crouch: true }),
-  victory0: (g, p) => stand(g, p, { armF: 'raise', face: 'happy' }),
-  victory1: (g, p) => stand(g, p, { armF: 'raise', face: 'happy', bob: -2, legs: 'walkB' }),
+  // raised paw goes on the BACK arm so it never covers the face
+  victory0: (g, p) => stand(g, p, { armF: 'guard', armB: 'raise', face: 'happy' }),
+  victory1: (g, p) => stand(g, p, { armF: 'guard', armB: 'raise', face: 'happy', bob: -2, legs: 'walkB' }),
 };
 
 export const POSE_NAMES = Object.keys(POSES);
