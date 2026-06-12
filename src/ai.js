@@ -11,19 +11,19 @@ export const AI_LEVELS = {
     name: 'LV.1 CHIBI', delay: 30, blockChance: 0.08, blockAcc: 0.4,
     combo: 0, antiAir: 0, punish: 0, aggression: 0.35,
     attackRate: 0.03, jumpRate: 0.006, fireballRate: 0.004, superRate: 0.002,
-    projReact: 0,
+    projReact: 0.18,
   },
   2: { // "Fighter AI" — solid arcade opponent
     name: 'LV.2 FIGHTER', delay: 15, blockChance: 0.5, blockAcc: 0.8,
     combo: 0.6, antiAir: 0.25, punish: 0.35, aggression: 0.6,
     attackRate: 0.07, jumpRate: 0.01, fireballRate: 0.01, superRate: 0.01,
-    projReact: 0.4,
+    projReact: 0.65,
   },
   3: { // "Boss AI" — frame-reading menace
     name: 'LV.3 BOSS', delay: 5, blockChance: 0.8, blockAcc: 0.95,
     combo: 0.95, antiAir: 0.9, punish: 0.95, aggression: 0.85,
     attackRate: 0.18, jumpRate: 0.005, fireballRate: 0.02, superRate: 0.04,
-    projReact: 0.8,
+    projReact: 0.95,
   },
 };
 
@@ -62,7 +62,7 @@ export function makeAIController(level) {
       if (r < 0.75) return { type: 'move', dir: 1, dur: 22 + (rng() * 20 | 0) };
       return { type: 'move', dir: -1, dur: 12 };
     }
-    if (dist > 60) {
+    if (dist > 40) {
       if (r < cfg.jumpRate * 16 && cfg.combo > 0) return { type: 'jumpIn', dur: 2 };
       if (r < 0.7) return { type: 'move', dir: 1, dur: 14 + (rng() * 14 | 0) };
       if (r < 0.85) return { type: 'idle', dur: 10 };
@@ -121,15 +121,25 @@ export function makeAIController(level) {
           blockTimer = 18 + cfg.delay;
         }
       }
-      // 2) React to projectiles
+      // 2) React to projectiles: jump over in the sweet-spot window, else block
       if (blockTimer <= 0 && cfg.projReact > 0 && self.canAct()) {
         // projectile owned by foe, ahead of us, flying toward us
         const proj = game.projectiles.find(p => p.owner !== self &&
-          Math.abs(p.x - self.x) < 110 &&
+          Math.abs(p.x - self.x) < 150 &&
           Math.sign(p.x - self.x) === toFoe && Math.sign(p.vx) === -toFoe);
-        if (proj && rng() < cfg.projReact * 0.15) {
-          if (rng() < 0.45) { plan = { type: 'jumpIn' }; }
-          else { blockLowWanted = false; blockTimer = 24; }
+        if (proj) {
+          const pd = Math.abs(proj.x - self.x);
+          const canHop = proj.kind === 'small' && pd > 45 && pd < 105;
+          if (canHop && rng() < cfg.projReact * 0.4) {
+            // hop forward over the shot (and often straight into a punish)
+            fwd(true); cmd.up = true; cmd.upPressed = true;
+            plan = { type: 'idle', dur: 8 };
+            return cmd;
+          }
+          if (pd < 90 && rng() < cfg.projReact * 0.35) {
+            blockLowWanted = false;
+            blockTimer = Math.min(45, Math.ceil(pd / 3) + 14);
+          }
         }
       }
       // 3) Anti-air: punish jumps (Boss specialty)
@@ -141,7 +151,7 @@ export function makeAIController(level) {
       // 4) Whiff punish: foe stuck in recovery near us
       if (cfg.punish > 0 && foeAttacking && !view.hitConnected &&
           view.stateT >= (ATTACKS[view.attack].startup + ATTACKS[view.attack].active) &&
-          dist < 62 && self.canAct() && rng() < cfg.punish * 0.8) {
+          dist < 38 && self.canAct() && rng() < cfg.punish * 0.8) {
         if (self.meter >= SUPER_COST && rng() < cfg.superRate * 25 + (level === 3 ? 0.7 : 0)) {
           press('hp'); press('sp');        // SUPER!
         } else {
@@ -153,7 +163,7 @@ export function makeAIController(level) {
       }
 
       // 5) Close-range pressure (L2/L3): open a chain on a passive foe
-      if (cfg.combo > 0 && dist < 46 && self.canAct() && !foeStartup &&
+      if (cfg.combo > 0 && dist < 36 && self.canAct() && !foeStartup &&
           !view.airborne && rng() < cfg.attackRate * 1.6) {
         comboSeq = rng() < 0.3 ? ['clight', 'cheavy'] : ['light', 'heavy', 'special'];
         comboStep = 0; plan = { type: 'attack', dur: 45 };
@@ -217,7 +227,7 @@ export function makeAIController(level) {
           break;
         }
         case 'attack': {
-          if (dist > 42) { fwd(true); }
+          if (dist > 32) { fwd(true); }
           else if (comboSeq) {
             const first = comboSeq[0];
             comboStep = 0;

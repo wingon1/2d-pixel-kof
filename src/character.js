@@ -99,6 +99,7 @@ export class Character {
     this.hitConnected = false;  // for cancels
     this.cancelT = 0;
     this.spawnedProj = false;
+    this.projCd = 0;            // special (projectile) cooldown — no spamming
     this.airAttacked = false;
     this.knockdownPending = false;
     this.lastHitLow = false;
@@ -208,7 +209,7 @@ export class Character {
       }
       return false;
     }
-    if (c.sp) { this.startAttack('special', game); return true; }
+    if (c.sp && this.projCd <= 0) { this.startAttack('special', game); return true; }
     const low = c.down;
     if (c.hp) { this.startAttack(low ? 'cheavy' : 'heavy', game); return true; }
     if (c.lp) { this.startAttack(low ? 'clight' : 'light', game); return true; }
@@ -224,7 +225,7 @@ export class Character {
       const want =
         (next === 'heavy' && c.hp && !c.down) ||
         (next === 'cheavy' && c.hp && c.down) ||
-        (next === 'special' && c.sp);
+        (next === 'special' && c.sp && this.projCd <= 0);
       if (want) { this.startAttack(next, game); return true; }
     }
     return false;
@@ -241,6 +242,7 @@ export class Character {
     this.t++;
     if (this.flashT > 0) this.flashT--;
     if (this.cancelT > 0) this.cancelT--;
+    if (this.projCd > 0) this.projCd--;
 
     // residual health bar catches up after a short delay
     if (this.residualDelay > 0) this.residualDelay--;

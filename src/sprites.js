@@ -51,17 +51,27 @@ function limb(g, c, x1, y1, x2, y2, th = 3) {
 }
 
 // ── body parts ───────────────────────────────────────────────────────────
+// Fighters are CATS: furry head with pointy ears, muzzle, nose, whiskers.
 function head(g, pal, cx, top, face = 'normal') {
-  px(g, pal.skin, cx - 10, top + 4, 20, 12);          // skull
-  px(g, pal.skinD, cx - 10, top + 15, 20, 1);         // chin shade
-  px(g, pal.hair, cx - 10, top, 20, 5);               // hair cap
-  px(g, pal.hairD, cx - 10, top + 4, 20, 1);
-  px(g, pal.hair, cx - 10, top + 5, 4, 5);            // back bang
-  px(g, pal.hair, cx + 7, top + 5, 3, 3);             // front bang
-  px(g, pal.belt, cx - 13, top + 2, 3, 2);            // headband knot
-  px(g, pal.belt, cx - 12, top + 4, 2, 4);            // headband tail
+  // ears (behind the head top edge)
+  for (const ex of [cx - 9, cx + 4]) {
+    px(g, pal.hair, ex, top - 2, 5, 3);
+    px(g, pal.hair, ex + 1, top - 4, 3, 2);
+    px(g, pal.blush, ex + 2, top - 3, 1, 3);          // inner ear
+  }
+  // furry skull
+  px(g, pal.hair, cx - 10, top, 20, 16);
+  px(g, pal.hairD, cx - 10, top + 15, 20, 1);          // chin shade
+  px(g, pal.hairD, cx - 1, top + 1, 1, 3);             // forehead stripes
+  px(g, pal.hairD, cx + 2, top + 1, 1, 3);
+  // headband across the forehead
+  px(g, pal.belt, cx - 10, top + 4, 20, 2);
+  px(g, pal.belt, cx - 13, top + 3, 3, 2);             // knot
+  px(g, pal.belt, cx - 12, top + 5, 2, 4);             // tail of knot
+  // muzzle patch (light fur, biased toward facing)
+  px(g, pal.skin, cx + 1, top + 10, 8, 5);
   // eyes biased toward facing (right)
-  const e1x = cx + 0, e2x = cx + 6, ey = top + 8;
+  const e1x = cx + 0, e2x = cx + 6, ey = top + 7;
   if (face === 'blink' || face === 'hurt') {
     px(g, pal.eye, e1x, ey + 2, 3, 1); px(g, pal.eye, e2x, ey + 2, 3, 1);
   } else if (face === 'ko') {
@@ -81,13 +91,30 @@ function head(g, pal, cx, top, face = 'normal') {
       px(g, pal.eye, e1x - 1, ey - 1, 3, 1); px(g, pal.eye, e2x, ey - 1, 3, 1);
     }
   }
-  px(g, pal.blush, cx - 2, top + 12, 2, 1);            // blush
-  px(g, pal.blush, cx + 8, top + 12, 2, 1);
-  // mouth
+  px(g, pal.blush, cx - 3, top + 11, 2, 1);            // blush
+  px(g, pal.blush, cx + 10, top + 11, 2, 1);
+  // pink nose + whiskers
+  px(g, '#ff7da0', cx + 4, top + 10, 2, 1);
+  px(g, '#ffffff', cx - 13, top + 9, 3, 1);            // whiskers (left)
+  px(g, '#ffffff', cx - 13, top + 12, 3, 1);
+  px(g, '#ffffff', cx + 10, top + 9, 3, 1);            // whiskers (right)
+  px(g, '#ffffff', cx + 10, top + 12, 3, 1);
+  // cat mouth
   if (face === 'shout') px(g, '#7a2030', cx + 3, top + 12, 3, 3);
-  else if (face === 'happy') px(g, '#7a2030', cx + 3, top + 13, 3, 1);
-  else if (face === 'hurt' || face === 'ko') px(g, '#7a2030', cx + 4, top + 13, 2, 2);
-  else px(g, '#7a2030', cx + 4, top + 13, 2, 1);
+  else if (face === 'happy') {                          // :3
+    px(g, '#7a2030', cx + 3, top + 13, 1, 1); px(g, '#7a2030', cx + 6, top + 13, 1, 1);
+    px(g, '#7a2030', cx + 4, top + 12, 2, 1);
+  } else if (face === 'hurt' || face === 'ko') px(g, '#7a2030', cx + 4, top + 13, 2, 2);
+  else {                                                // ω
+    px(g, '#7a2030', cx + 3, top + 13, 1, 1); px(g, '#7a2030', cx + 6, top + 13, 1, 1);
+  }
+}
+
+// curling cat tail, attached behind the hip
+function tail(g, pal, hx, hy, t = 0) {
+  limb(g, pal.hair, hx, hy, hx - 6, hy - 6, 2);
+  limb(g, pal.hair, hx - 6, hy - 6, hx - 8, hy - 12 - t, 2);
+  px(g, pal.hairD, hx - 9, hy - 15 - t, 3, 3);          // darker tip
 }
 
 function torso(g, pal, cx, top, h = 12, w = 14) {
@@ -138,7 +165,10 @@ function stand(g, pal, o = {}) {
   const shB = [lean - 4, torsoTop + 3];                // back shoulder
   const hF = HANDS[o.armF || 'guard'], hB = HANDS[o.armB || 'guardB'];
 
-  // back arm first (behind body)
+  // tail first (behind everything), wags with the idle bob
+  tail(g, pal, lean - 6, hipY - 2, bob);
+
+  // back arm (behind body)
   arm(g, pal, shB[0], shB[1], lean + hB[0] - 2, hB[1] + bob);
 
   // legs
@@ -182,23 +212,28 @@ function stand(g, pal, o = {}) {
 
 function lying(g, pal, face = 'hurt') {
   // flat on back, head toward the LEFT (was knocked away from foe)
+  px(g, pal.hair, 11, -6, 9, 3);                        // limp tail
+  px(g, pal.hairD, 19, -7, 3, 3);
   px(g, pal.giD, -6, -8, 18, 5);                        // legs flat
   px(g, pal.shoe, 12, -8, 4, 3);
   px(g, pal.gi, -14, -9, 12, 6);                        // torso
   px(g, pal.belt, -5, -9, 2, 6);
-  // head sideways
-  px(g, pal.skin, -26, -12, 14, 9);
-  px(g, pal.hair, -28, -13, 8, 10);
-  px(g, pal.belt, -29, -10, 2, 5);
+  // furry head sideways + ear
+  px(g, pal.hair, -27, -12, 15, 9);
+  px(g, pal.hair, -27, -15, 3, 3);                      // ear up
+  px(g, pal.blush, -26, -14, 1, 2);
+  px(g, pal.belt, -29, -10, 2, 5);                      // headband knot
+  px(g, pal.skin, -18, -8, 5, 4);                       // muzzle
   const ey = -9;
   if (face === 'ko') {
-    px(g, pal.eye, -18, ey - 1, 1, 1); px(g, pal.eye, -16, ey - 1, 1, 1);
-    px(g, pal.eye, -17, ey, 1, 1);
-    px(g, pal.eye, -18, ey + 1, 1, 1); px(g, pal.eye, -16, ey + 1, 1, 1);
+    px(g, pal.eye, -22, ey - 1, 1, 1); px(g, pal.eye, -20, ey - 1, 1, 1);
+    px(g, pal.eye, -21, ey, 1, 1);
+    px(g, pal.eye, -22, ey + 1, 1, 1); px(g, pal.eye, -20, ey + 1, 1, 1);
   } else {
-    px(g, pal.eye, -18, ey, 3, 1);
+    px(g, pal.eye, -22, ey, 3, 1);
   }
-  px(g, '#7a2030', -14, ey + 1, 2, 1);
+  px(g, '#ff7da0', -17, ey + 1, 2, 1);                  // nose
+  px(g, '#ffffff', -13, ey + 1, 3, 1);                  // whisker
 }
 
 // ── pose table ───────────────────────────────────────────────────────────
@@ -271,9 +306,9 @@ export function bakeFighter(pal) {
 }
 
 export function bakePortrait(pal) {
-  return bakeCanvas(26, 24, (g) => {
-    g.translate(13, 22);
-    head(g, pal, 0, -20, 'normal');
+  return bakeCanvas(28, 26, (g) => {
+    g.translate(14, 25);
+    head(g, pal, 0, -21, 'normal');
   });
 }
 

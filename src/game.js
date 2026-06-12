@@ -91,6 +91,7 @@ export class Game {
   spawnProjectile(owner, kind) {
     if (kind === 'small' &&
         this.projectiles.some(p => p.owner === owner && p.kind === 'small')) return;
+    if (kind === 'small') owner.projCd = 90;   // 1.5s cooldown: no fireball spam
     const idx = this.fighters.indexOf(owner);
     const big = kind === 'super';
     this.projectiles.push({
